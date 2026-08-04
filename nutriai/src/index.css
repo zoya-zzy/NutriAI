@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  body {
+    @apply bg-cream-50 text-gray-800 font-sans;
+    min-height: 100vh;
+  }
+  
+  #root {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    background: linear-gradient(180deg, #fefdfb 0%, #fdf8f3 50%, #faf3ea 100%);
+  }
+}
+
+@layer components {
+  .journal-card {
+    @apply bg-white rounded-journal p-4 shadow-card transition-all duration-300 hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-500 text-white px-6 py-3 rounded-journal font-semibold transition-all duration-200 hover:bg-primary-600 active:scale-95;
+  }
+  
+  .btn-secondary {
+    @apply bg-warm-100 text-warm-600 px-4 py-2 rounded-xl font-medium transition-all duration-200 hover:bg-warm-200 active:scale-95;
+  }
+  
+  .btn-gradient {
+    @apply bg-gradient-to-r from-primary-500 to-primary-400 text-white px-6 py-3 rounded-journal font-semibold shadow-lg transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:scale-95;
+  }
+  
+  .sticker {
+    @apply rounded-xl p-3 transition-all duration-200 hover:scale-105;
+  }
+  
+  .progress-bar {
+    @apply h-2 rounded-full overflow-hidden bg-gray-100;
+  }
+  
+  .nav-item {
+    @apply flex flex-col items-center justify-center flex-1 py-2 transition-all duration-200;
+  }
+  
+  .nav-item-active {
+    @apply text-primary-500;
+  }
+  
+  .nav-item-inactive {
+    @apply text-gray-400;
+  }
+  
+  .chat-bubble-user {
+    @apply bg-primary-500 text-white rounded-2xl rounded-br-md px-4 py-3 max-w-[80%];
+  }
+  
+  .chat-bubble-ai {
+    @apply bg-white text-gray-800 rounded-2xl rounded-bl-md px-4 py-3 max-w-[80%] shadow-card;
+  }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d1d5db;
+}

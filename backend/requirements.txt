@@ -1,0 +1,10 @@
+# NutriAI 后端依赖
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.5
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+
+# 模型调用依赖
+requests>=2.31.0
+dashscope>=1.13.0
