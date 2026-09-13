@@ -4,7 +4,8 @@
  * 调用后端接口，获取 AI 营养师建议 + 自然语言聊天。
  */
 
-const API_BASE = import.meta.env.DEV ? '' : 'http://localhost:8080'
+// 开发环境用 Vite 代理（空字符串），生产环境用 VITE_API_BASE 环境变量
+import { apiRequest } from './client.js'
 
 /**
  * 获取 AI 营养建议
@@ -13,17 +14,11 @@ const API_BASE = import.meta.env.DEV ? '' : 'http://localhost:8080'
  */
 export async function getNutritionAdvice(data) {
   try {
-    const resp = await fetch(`${API_BASE}/api/nutrition-advice`, {
+    const json = await apiRequest('/api/nutrition-advice', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
-
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`)
-    }
-
-    const json = await resp.json()
 
     if (!json.success) {
       throw new Error(json.message || json.error || 'AI service unavailable')
@@ -59,7 +54,7 @@ export async function getNutritionAdvice(data) {
  */
 export async function chatWithNutritionAgent(message, context = {}) {
   try {
-    const resp = await fetch(`${API_BASE}/api/chat`, {
+    const json = await apiRequest('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -69,12 +64,6 @@ export async function chatWithNutritionAgent(message, context = {}) {
         nutrition: context.nutrition || {},
       }),
     })
-
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`)
-    }
-
-    const json = await resp.json()
 
     if (!json.success) {
       throw new Error(json.message || json.error || 'AI service unavailable')

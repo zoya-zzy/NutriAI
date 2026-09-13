@@ -5,7 +5,8 @@
  * 上传图片文件，获取 AI 识别的结构化营养数据。
  */
 
-const API_BASE = import.meta.env.DEV ? '' : 'http://localhost:8080'
+// 开发环境用 Vite 代理（空字符串），生产环境用 VITE_API_BASE 环境变量
+import { apiRequest } from './client.js'
 
 /**
  * 识别食物 - 调用后端 API
@@ -33,17 +34,10 @@ export const recognizeFood = async (image) => {
   const formData = new FormData()
   formData.append('image', fileToUpload, fileToUpload.name || 'food.jpg')
 
-  const response = await fetch(`${API_BASE}/api/recognize-food`, {
+  const data = await apiRequest('/api/recognize-food', {
     method: 'POST',
     body: formData,
   })
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.detail || `请求失败 (${response.status})`)
-  }
-
-  const data = await response.json()
 
   if (!data.success) {
     throw new Error(data.message || data.error || 'AI 识别失败')
@@ -66,9 +60,7 @@ export const recognizeFood = async (image) => {
  * 健康检查
  */
 export const checkHealth = async () => {
-  const response = await fetch(`${API_BASE}/api/health`)
-  if (!response.ok) throw new Error('健康检查失败')
-  return response.json()
+  return apiRequest('/api/health', {}, { timeoutMs: 15000 })
 }
 
 /**
