@@ -24,12 +24,13 @@ from pydantic import BaseModel
 _env_path = pathlib.Path(__file__).resolve().parent / ".env"
 try:
     from dotenv import load_dotenv
-    load_dotenv(dotenv_path=str(_env_path), override=True)
+    load_dotenv(dotenv_path=str(_env_path), override=False)
 except ImportError:
     pass
 
 from model import recognize_food, FoodRecognitionResult
 from nutrition_agent import NutritionAgent, ChatResult
+from starlette.concurrency import run_in_threadpool
 
 # 日志配置
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(levelname)s: %(message)s')
@@ -47,19 +48,31 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS 配置 - 允许前端开发服务器跨域
+# CORS 配置 - 允许前端开发服务器 + 生产环境跨域
+_allowed_origins = [
+    # 本地开发
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://localhost:5177",
+    "http://localhost:5178",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+]
+
+# 从环境变量追加允许的域名（逗号分隔）
+_extra_origins = os.environ.get("ALLOWED_ORIGINS", "")
+if _extra_origins:
+    _allowed_origins.extend([o.strip() for o in _extra_origins.split(",") if o.strip()])
+
+# 开发环境允许所有来源（仅当 ALLOW_ALL_ORIGINS=true 时）
+if os.environ.get("ALLOW_ALL_ORIGINS", "").lower() == "true":
+    _allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:5176",
-        "http://localhost:5177",
-        "http://localhost:5178",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -79,6 +92,8 @@ class FoodRecognitionResponse(BaseModel):
     confidence: float = 0
     emoji: str = ""
     recognizedAt: str = ""
+    servingDescription: str = ""
+    estimateNote: str = ""
     message: str = ""
     error: Optional[str] = None
 
@@ -86,6 +101,7 @@ class FoodRecognitionResponse(BaseModel):
 class HealthCheckResponse(BaseModel):
     status: str = "ok"
     model: str = ""
+    aiConfigured: bool = False
     timestamp: str = ""
 
 
@@ -144,6 +160,7 @@ async def health_check():
     return HealthCheckResponse(
         status="ok",
         model=model_type,
+        aiConfigured=bool(os.environ.get("DASHSCOPE_API_KEY", "")),
         timestamp=datetime.now().isoformat()
     )
 
@@ -188,7 +205,7 @@ async def nutrition_advice(request: NutritionAdviceRequest):
 
     try:
         agent = get_agent()
-        result = agent.generate_advice(
+        result = await run_in_threadpool(agent.generate_advice,
             user_profile=request.userProfile,
             diary=request.diary,
             nutrition_status=request.nutrition,
@@ -238,7 +255,7 @@ async def chat(request: ChatRequest):
 
     try:
         agent = get_agent()
-        result = agent.process_message(
+        result = await run_in_threadpool(agent.process_message,
             message=request.message,
             user_profile=request.userProfile,
             diary=request.diary,
@@ -307,7 +324,9 @@ async def recognize_food_endpoint(
     
     # 限制文件大小 (最大 10MB)
     MAX_SIZE = 10 * 1024 * 1024
-    contents = await image.read()
+    contents = await image.read(MAX_SIZE + 1)
+    if not contents:
+        raise HTTPException(status_code=400, detail="图片不能为空")
     if len(contents) > MAX_SIZE:
         raise HTTPException(
             status_code=400,
@@ -318,7 +337,7 @@ async def recognize_food_endpoint(
     
     try:
         # 调用模型进行识别
-        result = recognize_food(contents)
+        result = await run_in_threadpool(recognize_food, contents)
         
         logger.info(
             f"[RESULT] 识别完成: foodName={result.food_name}, "
@@ -337,6 +356,8 @@ async def recognize_food_endpoint(
             confidence=result.confidence,
             emoji=result.emoji,
             recognizedAt=result.recognized_at,
+            servingDescription=result.serving_description,
+            estimateNote=result.estimate_note,
             message="识别成功"
         )
         
@@ -345,7 +366,7 @@ async def recognize_food_endpoint(
         logger.info("=" * 60)
         return FoodRecognitionResponse(
             success=False,
-            message="AI service unavailable",
+            message=str(e) if isinstance(e, ValueError) else "图片识别暂时不可用，请稍后重试。",
             error=str(e)
         )
 
@@ -370,10 +391,12 @@ if __name__ == "__main__":
     logger.info(f"  .env 路径: {_env_path}")
     logger.info("=" * 60)
     
+    # 生产环境禁用 reload（通过 RENDER/RAILWAY 环境变量判断）
+    _is_prod = os.environ.get("RENDER", "") or os.environ.get("RAILWAY_ENVIRONMENT", "")
     uvicorn.run(
         "main:app",
         host=host,
         port=port,
-        reload=True,
+        reload=not _is_prod,
         log_level="info",
     )

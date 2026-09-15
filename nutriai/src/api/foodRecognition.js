@@ -53,6 +53,8 @@ export const recognizeFood = async (image) => {
     fat: data.fat,
     confidence: data.confidence,
     recognizedAt: data.recognizedAt,
+    servingDescription: data.servingDescription,
+    estimateNote: data.estimateNote,
   }
 }
 

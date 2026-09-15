@@ -171,6 +171,7 @@ export default function Camera() {
     setUploading(true)
     setUploadProgress(0)
     setResult(null)
+    setAdded(false)
     
     // 模拟上传进度（仅用于 UI 反馈）
     const progressInterval = setInterval(() => {
@@ -196,6 +197,8 @@ export default function Camera() {
           protein: food.protein,
           carbs: food.carbs,
           fat: food.fat,
+          servingDescription: food.servingDescription,
+          estimateNote: food.estimateNote,
           confidence: food.confidence
         })
       }
@@ -223,7 +226,7 @@ export default function Camera() {
 
   // ============== 添加到日记 ==============
   const handleAddToDiary = async () => {
-    if (!result) return
+    if (!result || result.error || uploading || recognizing) return
 
     try {
       addFood(
@@ -519,9 +522,19 @@ export default function Camera() {
         {/* Canvas for photo capture (hidden) */}
         <canvas ref={canvasRef} className="hidden" />
 
+        {result?.error && !uploading && (
+          <div role="alert" className="bg-red-50 border border-red-200 rounded-2xl p-5 space-y-3">
+            <p className="font-semibold text-red-700">本次识别未成功</p>
+            <p className="text-sm text-red-600">{result.error}</p>
+            <button type="button" onClick={() => imageFile && startRecognition(imageFile)}
+              className="px-4 py-2 bg-white rounded-xl text-red-700">重试这张图片</button>
+            <button type="button" onClick={reset} className="ml-3 text-sm text-red-700">重新拍照或上传</button>
+          </div>
+        )}
+
         {/* Recognition Result */}
         <AnimatePresence>
-          {result && !recognizing && !uploading && (
+          {result && !result.error && !recognizing && !uploading && (
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -564,6 +577,11 @@ export default function Camera() {
                     <p className="font-bold text-blue-600 text-lg">{result.fat}</p>
                     <p className="text-xs text-gray-400">g</p>
                   </div>
+                </div>
+
+                <div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+                  <p>估算份量：{result.servingDescription || '图中份量'}</p>
+                  <p className="mt-1 text-xs">{result.estimateNote || '营养数据为估算，请结合实际份量与包装标签确认。'}</p>
                 </div>
 
                 {/* Meal Slot Selection */}
